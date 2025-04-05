@@ -1,57 +1,65 @@
 # egamma-tnp
 E/Gamma High Level Trigger efficiency from NanoAOD using Tag and Probe in the [coffea](https://github.com/CoffeaTeam/coffea) framework.
 
-## Quick Start
+## Initial Setup
 To use jupyter notebooks on a cluster (LPC for instance), choose a 3-digit number to replace the three instances of `xxx` below. The setup is similar for LXPLUS. We also port-forward 8787 to monitor the dask dashboard.
 ```bash
 # connect to LPC with a port forward to access the jupyter notebook server and the dask dashboard
 # remember to `kinit USERNAME@FNAL.GOV` to set up kerberos authorization before logging in
 ssh USERNAME@cmslpc-sl7.fnal.gov -L8xxx:localhost:8xxx -L8787:localhost:8787
+
+# or 
+
+ssh USERNAME@lxplus.cern.ch -L8787:localhost:8787
 ```
+
 Then create a working directory, clone the repository and enter the directory
 ```bash
-cd nobackup # if this symlink does not exist, look for /uscms_data/d1/$USER
-git clone git@github.com:iasonkrom/egamma-tnp.git
-cd egamma-tnp
+cd /afs/cern.ch/work/s/ssaumya/private/Egamma/IasonTool/
+git clone -b 2024_Studies git@github.com:saumyaphor4252/egamma-tnp.git
+cd egamma-tnp/
 ```
-The package can in principle be installed in any python virtual environment with python 3.8 or higher. That means that you can use it within a conda environment, a Singularity or Docker container, an LCG release, or any other python environment without any conflicting packages.
+The package can in principle be installed in any python virtual environment with python 3.8 or higher. 
+That means that you can use it within a conda environment, a Singularity or Docker container, an LCG release, or any other python environment without any conflicting packages.
 
-For simplicity, we offer a `setup.sh` bash script that gives a `coffea` Singularity shell where you can install the package and run it using the default dask configuration for LXPLUS or LPC.
 ```bash
-bash setup_local.sh
+python3 -m venv egmtnpenv
+source egmtnpenv/bin/activate
+pip install jupyter
+pip install ipython
+pip install ipykernel
+ipython kernel install --user --name=egmtnpenv
+python -m ipykernel install --user --name=egmtnpenv
+pip install . --no-cache-dir
 ```
-If you are on LPC and want to use the LPC job queue, you can make use of the [lpcjobqueue](https://github.com/CoffeaTeam/lpcjobqueue). We offer a similar setup script that gives you a `coffea` Singularity shell with the `lpcjobqueue` installed.
-```bash
-bash setup_lpcjobqueue.sh
+
+Proxy might be needed before depending on the particular job/task.
 ```
-Both of those scripts create two new files in your directory: `shell` and `.bashrc`. The `./shell`
-executable can then be used to start a Singularity shell with a `coffea` environment.
-Note that the Singularity environment does inherit from your calling environment, so
-it should be "clean" (i.e. no cmsenv, LCG release, etc.). For more info, refer to the README of the `lpcjobqueue` repository.
-
-If you are on LXPLUS, you can try using a similar job queue implementation available in https://github.com/cernops/dask-lxplus but it is not recommended as LXPLUS can have unexpected reactions to the dask job queue.
-
-Be sure your x509 grid proxy certificate is up to date before starting the shell.
-```bash
 voms-proxy-init --voms cms --valid 100:00
 ```
-Once you are in your Singularity shell, you can install the `egamma-tnp` package:
-```bash
-pip install .
-```
-This works the same way in any other python virtual environment.
 
-You don't have to use jupyter to run this package.
-However, there are a lot of convenient features available in jupyter notebook that make this tool very expressive.
-Jupyter comes pre-installed in the singularity images. If you want to use any other type of environment and want to use jupyter notebooks,
-make sure it has jupyter (`lab`, `notebook` or `nbclassic`) installed.
+In general, you don't have to use jupyter to run this package however, there are a lot of convenient features available in jupyter notebook that make this tool very expressive. 
+Jupyter comes pre-installed in the singularity images. 
+If you want to use any other type of environment and want to use jupyter notebooks, make sure it has jupyter (`lab`, `notebook` or `nbclassic`) installed.
 
 To start the jupyter notebook, do
 ```bash
 jupyter lab --no-browser --port 8xxx
 ```
+
 There should be a link like `http://localhost:8xxx/?token=...` displayed in the output at this point, paste that into your browser.
 You should see a jupyter notebook with a directory listing.
+
+### Next time you want to run
+
+```
+ssh -o ServerAliveInterval=10 ssaumya@lxplus9.cern.ch -L8777:localhost:8777
+cd /afs/cern.ch/user/s/ssaumya/Egamma/egamma-tnp/
+source egmtnpenv/bin/activate
+jupyter lab --no-browser --port 8777
+
+# Notebook template: https://github.com/saumyaphor4252/egamma-tnp/blob/2024_Studies/SpikeKiller_FineTuning.ipynb
+```
 
 ## Running the code
 This is the basic idea of how to run the code.
@@ -63,17 +71,11 @@ First you define the `Client` that you want to use. For the default dask `Client
 from distributed import Client
 client = Client()
 ```
-and to use the job queue you would do
-```python
-from distributed import Client
-from lpcjobqueue import LPCCondorCluster
 
-cluster = LPCCondorCluster(ship_env=True)
-cluster.adapt(minimum=1, maximum=100)
-client = Client(cluster)
-```
 More basic examples of dask client usage can be found [here](https://distributed.dask.org/en/latest/client.html).
-After that you need to define a fileset to calculate efficiencies over. In coffea, a fileset is a dictionary of the form
+
+After that you need to define a fileset to calculate efficiencies over. 
+In coffea, a fileset is a dictionary of the form
 ```python
 fileset = {
     "ZJets": {
@@ -90,7 +92,9 @@ fileset = {
     },
 }
 ```
-This contains all the different datasets to run over. The keys are the dataset names and the values are dictionaries with the files and the tree names.
+
+This contains all the different datasets to run over. 
+The keys are the dataset names and the values are dictionaries with the files and the tree names.
 In this example we used local paths but the file paths can also be remote paths like xrootd or http.
 To construct a fileset, you can query DAS through `rucio` using `coffea`'s dataset tools. Documentation on how to do that can be found in [this notebook](https://github.com/CoffeaTeam/coffea/blob/master/binder/dataset_discovery.ipynb).
 This notebook also explains how to preprocess the fileset you queried for to remove any unavailable files using the `DataDiscoveryCLI` tool either from the command line or through python.
@@ -113,8 +117,10 @@ tag_n_probe = ElePt_WPTight_Gsf(
     goldenjson="json/Cert_Collisions2023_366442_370790_Golden.json",
 )
 ```
+
 Please refer to its docstring for more information on the arguments.
 Then to perform tag and probe to get the $P_T$, $\eta$ and $\phi$ histograms of the passing and all probes
+
 ```python
 histograms, report = tag_n_probe.get_tnp_histograms(
     uproot_options={"allow_read_errors_with_report": True},
@@ -126,6 +132,7 @@ histograms, report = tag_n_probe.get_tnp_histograms(
     compute=True,
 )
 ```
+
 Both `histograms` and `report` are dictionaries that have the datasets of the fileset as keys and the values are dictionaries that contain all the requested histograms and awkward arrays that contain the reports about file access errors respectively.
 Suppose we used as `fileset_available` the fileset that we defined previously and you want to plot the efficiencies for the `ZJets` dataset as a function of $P_T$, $\eta$ and $\phi$.
 To do this you would do
